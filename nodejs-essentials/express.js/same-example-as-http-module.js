@@ -10,7 +10,8 @@ app.use((request, response, next) => {
 app.post("/hello", express.json(), (request, response) => {
     const { name } = request.body;
     if (!name) {
-        return response.sendStatus(400, "name is a required parameter.");
+        return response.status(400)
+            .send("name is a required parameter.");
     }
     response.status(200)
         .send(`Hello ${name}!`);
