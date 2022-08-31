@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: main-stack
+
+Resources:
+  NetworkStack:
+    Type: AWS::CloudFormation::Stack
+    Properties: 
+      TemplateURL: ./networks/template.yaml
+  DatabaseStack:
+    Type: AWS::CloudFormation::Stack
+    Properties: 
+      TemplateURL: ./databases/template.yaml
+      Parameters:
+        DatabaseSubnet1Id: !GetAtt NetworkStack.Outputs.DatabaseSubnet1Id
+        DatabaseSubnet2Id: !GetAtt NetworkStack.Outputs.DatabaseSubnet2Id
+        DatabaseSubnet1AZ: !GetAtt NetworkStack.Outputs.DatabaseSubnet1AZ
+        DatabaseSubnet2AZ: !GetAtt NetworkStack.Outputs.DatabaseSubnet2AZ
+        DatabaseSecurityGroupId: !GetAtt NetworkStack.Outputs.DatabaseSecurityGroupId
+  LambdaStack:
+    Type: AWS::CloudFormation::Stack
+    Properties: 
+      TemplateURL: ./functions/template.yaml
+      Parameters:
+        DatabaseEndpoint: !GetAtt DatabaseStack.Outputs.DatabaseEndpoint
+        DatabasePort: !GetAtt DatabaseStack.Outputs.DatabasePort
+        DatabaseName: !GetAtt DatabaseStack.Outputs.DatabaseName
+        DatabaseUsername: !GetAtt DatabaseStack.Outputs.DatabaseUsername
+        DatabasePassword: !GetAtt DatabaseStack.Outputs.DatabasePassword
+  ApiStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./apis/template.yaml
+      Parameters:
+        AuthorizerLambdaArn: !GetAtt LambdaStack.Outputs.AuthorizerLambdaArn
+        RegisterLambdaArn: !GetAtt LambdaStack.Outputs.RegisterLambdaArn
+        LoginLambdaArn: !GetAtt LambdaStack.Outputs.LoginLambdaArn
+        GetPostsLambdaArn: !GetAtt LambdaStack.Outputs.GetPostsLambdaArn
+        CreatePostLambdaArn: !GetAtt LambdaStack.Outputs.CreatePostLambdaArn
+        AuthorizerLambdaName: !GetAtt LambdaStack.Outputs.AuthorizerLambdaName
+        RegisterLambdaName: !GetAtt LambdaStack.Outputs.RegisterLambdaName
+        LoginLambdaName: !GetAtt LambdaStack.Outputs.LoginLambdaName
+        GetPostsLambdaName: !GetAtt LambdaStack.Outputs.GetPostsLambdaName
+        CreatePostLambdaName: !GetAtt LambdaStack.Outputs.CreatePostLambdaName
+
+Outputs:
+  ExampleAPIBaseURL:
+    Value: !GetAtt ApiStack.Outputs.ExampleAPIBaseURL

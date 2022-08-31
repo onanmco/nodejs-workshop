@@ -1,0 +1,221 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: lambda-stack
+
+Globals:
+  Function:
+    Timeout: 30
+
+Parameters:
+  SecretKey:
+    Type: String
+    Default: "SUPERSECRET"
+  DatabaseEndpoint:
+    Type: String
+  DatabasePort:
+    Type: String
+  DatabaseName:
+    Type: String
+  DatabaseUsername:
+    Type: String
+  DatabasePassword:
+    Type: String
+
+Resources:
+  AuthorizerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+
+  Authorizer:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: authorizer
+      Handler: index.handler
+      Runtime: nodejs16.x
+      Role: !GetAtt AuthorizerRole.Arn
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          SECRET_KEY: !Ref SecretKey
+
+  CreatePostRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+
+  DatabaseAccessPolicy:
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyName: DatabaseAccessPolicy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - "rds-data:*"
+            Resource:
+              - "*"
+      Roles:
+        - !Ref CreatePostRole
+        - !Ref GetPostsRole
+        - !Ref LoginRole
+        - !Ref RegisterRole
+  
+  CreatePost:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: create-post
+      Handler: index.handler
+      Runtime: nodejs16.x
+      Role: !GetAtt CreatePostRole.Arn
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          DB_HOST: !Ref DatabaseEndpoint
+          DB_PORT: !Ref DatabasePort
+          DB_USER: !Ref DatabaseUsername
+          DB_NAME: !Ref DatabaseName
+          DB_PWD: !Ref DatabasePassword
+
+  GetPostsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+  
+  GetPosts:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: get-posts-by-user-id
+      Handler: index.handler
+      Runtime: nodejs16.x
+      Role: !GetAtt GetPostsRole.Arn
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          DB_HOST: !Ref DatabaseEndpoint
+          DB_PORT: !Ref DatabasePort
+          DB_USER: !Ref DatabaseUsername
+          DB_NAME: !Ref DatabaseName
+          DB_PWD: !Ref DatabasePassword
+
+  LoginRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+  
+  Login:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: login
+      Handler: index.handler
+      Runtime: nodejs16.x
+      Role: !GetAtt LoginRole.Arn
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          DB_HOST: !Ref DatabaseEndpoint
+          DB_PORT: !Ref DatabasePort
+          DB_USER: !Ref DatabaseUsername
+          DB_NAME: !Ref DatabaseName
+          DB_PWD: !Ref DatabasePassword
+          SECRET_KEY: !Ref SecretKey
+  
+  RegisterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+  
+  Register:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: register
+      Handler: index.handler
+      Runtime: nodejs16.x
+      Role: !GetAtt RegisterRole.Arn
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          DB_HOST: !Ref DatabaseEndpoint
+          DB_PORT: !Ref DatabasePort
+          DB_USER: !Ref DatabaseUsername
+          DB_NAME: !Ref DatabaseName
+          DB_PWD: !Ref DatabasePassword
+          SECRET_KEY: !Ref SecretKey
+
+Outputs:
+  AuthorizerLambdaArn:
+    Value: !GetAtt Authorizer.Arn
+  RegisterLambdaArn:
+    Value: !GetAtt Register.Arn
+  LoginLambdaArn:
+    Value: !GetAtt Login.Arn
+  GetPostsLambdaArn:
+    Value: !GetAtt GetPosts.Arn
+  CreatePostLambdaArn:
+    Value: !GetAtt CreatePost.Arn
+  AuthorizerLambdaName:
+    Value: !Ref Authorizer
+  RegisterLambdaName:
+    Value: !Ref Register
+  LoginLambdaName:
+    Value: !Ref Login
+  GetPostsLambdaName:
+    Value: !Ref GetPosts
+  CreatePostLambdaName:
+    Value: !Ref CreatePost

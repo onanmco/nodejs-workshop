@@ -1,0 +1,1 @@
+for path in $(find . -path "*/package.json"); do echo $(dirname $(realpath $path)) ; done | while read directory ; do echo "Installing dependencies for the following path $directory" && cd $directory && npm install ; done

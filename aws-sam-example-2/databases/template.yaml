@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: database-stack
+
+Parameters:
+  DatabaseSubnet1Id:
+    Type: AWS::EC2::Subnet::Id
+  DatabaseSubnet2Id:
+    Type: AWS::EC2::Subnet::Id
+  DatabaseSubnet1AZ:
+    Type: AWS::EC2::AvailabilityZone::Name
+  DatabaseSubnet2AZ:
+    Type: AWS::EC2::AvailabilityZone::Name
+  DatabaseSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+  DatabaseUsername:
+    Type: String
+    Default: "admin"
+  DatabasePassword:
+    Type: String
+    Default: "Test1234"
+    NoEcho: true
+  DatabaseName:
+    Type: String
+    Default: "example-db"
+
+Resources:
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties: 
+      DBSubnetGroupDescription: Subnet group for database
+      DBSubnetGroupName: db-subnet-group
+      SubnetIds: 
+        - !Ref DatabaseSubnet1Id
+        - !Ref DatabaseSubnet2Id
+
+  DatabaseCluster:
+    Type: AWS::RDS::DBCluster
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+    Properties:
+      AvailabilityZones:
+        - !Ref DatabaseSubnet1AZ
+        - !Ref DatabaseSubnet2AZ
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      MasterUsername: !Ref DatabaseUsername
+      MasterUserPassword: !Ref DatabasePassword
+      DBClusterIdentifier: example-db
+      Engine: aurora
+      EngineMode: serverless
+      VpcSecurityGroupIds:
+        - !Ref DatabaseSecurityGroupId
+      ScalingConfiguration:
+        AutoPause: false
+        MinCapacity: 2
+        MaxCapacity: 16
+        SecondsUntilAutoPause: 300
+
+Outputs:
+  DatabaseEndpoint:
+    Value: !GetAtt DatabaseCluster.Endpoint.Address
+  DatabasePort:
+    Value: !GetAtt DatabaseCluster.Endpoint.Port
+  DatabaseName:
+    Value: !Ref DatabaseName
+  DatabaseUsername:
+    Value: !Ref DatabaseUsername
+  DatabasePassword:
+    Value: !Ref DatabasePassword
+  DatabaseClusterName:
+    Value: !Ref DatabaseCluster

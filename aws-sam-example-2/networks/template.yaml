@@ -1,0 +1,100 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: network-stack
+
+Parameters:
+  VpcCidrBlock:
+    Type: String
+    Default: "192.168.0.0/16"
+  DatabaseSubnet1CidrBlock:
+    Type: String
+    Default: "192.168.1.0/24"
+  DatabaseSubnet2CidrBlock:
+    Type: String
+    Default: "192.168.2.0/24"
+
+Resources:
+  Network:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidrBlock
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: example-vpc
+
+  DatabaseSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs 
+          Ref: "AWS::Region"
+      VpcId: !Ref Network
+      CidrBlock: !Ref DatabaseSubnet1CidrBlock
+      Tags:
+        - Key: Name
+          Value: database-subnet-1
+  
+  DatabaseSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select
+        - 1
+        - !GetAZs 
+          Ref: "AWS::Region"
+      VpcId: !Ref Network
+      CidrBlock: !Ref DatabaseSubnet2CidrBlock
+      Tags:
+        - Key: Name
+          Value: database-subnet-2
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties: 
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref Network
+
+  InternetGatewayRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Network
+
+  InternetGatewayRoute:
+    Type: AWS::EC2::Route
+    Properties: 
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !GetAtt InternetGateway.InternetGatewayId
+      RouteTableId: !Ref InternetGatewayRouteTable
+
+  DatabaseFirewallRule:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for database
+      GroupName: example-database-sg
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: "0.0.0.0/0"
+      VpcId: !Ref Network
+
+Outputs:
+  VpcId:
+    Value: !Ref Network
+  DatabaseSubnet1Id:
+    Value: !Ref DatabaseSubnet1
+  DatabaseSubnet2Id:
+    Value: !Ref DatabaseSubnet2
+  DatabaseSubnet1AZ:
+    Value: !GetAtt DatabaseSubnet1.AvailabilityZone
+  DatabaseSubnet2AZ:
+    Value: !GetAtt DatabaseSubnet2.AvailabilityZone
+  DatabaseSecurityGroupId:
+    Value: !Ref DatabaseFirewallRule

@@ -1,0 +1,195 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: api-stack
+
+Parameters:
+  AuthorizerLambdaArn:
+    Type: String
+  RegisterLambdaArn:
+    Type: String
+  LoginLambdaArn:
+    Type: String
+  GetPostsLambdaArn:
+    Type: String
+  CreatePostLambdaArn:
+    Type: String
+  AuthorizerLambdaName:
+    Type: String
+  RegisterLambdaName:
+    Type: String
+  LoginLambdaName:
+    Type: String
+  GetPostsLambdaName:
+    Type: String
+  CreatePostLambdaName:
+    Type: String
+
+Resources:
+  ExampleAPI:
+    Type: AWS::ApiGateway::RestApi
+    Properties: 
+      Description: Example API
+      Name: example-api
+
+  Login:
+    Type: AWS::ApiGateway::Resource
+    Properties: 
+      ParentId: !GetAtt ExampleAPI.RootResourceId
+      PathPart: login
+      RestApiId: !Ref ExampleAPI
+
+  Register:
+    Type: AWS::ApiGateway::Resource
+    Properties: 
+      ParentId: !GetAtt ExampleAPI.RootResourceId
+      PathPart: register
+      RestApiId: !Ref ExampleAPI
+
+  Users:
+    Type: AWS::ApiGateway::Resource
+    Properties: 
+      ParentId: !GetAtt ExampleAPI.RootResourceId
+      PathPart: users
+      RestApiId: !Ref ExampleAPI
+  
+  UserId:
+    Type: AWS::ApiGateway::Resource
+    Properties: 
+      ParentId: !Ref Users
+      PathPart: "{user_id}"
+      RestApiId: !Ref ExampleAPI
+  
+  Posts:
+    Type: AWS::ApiGateway::Resource
+    Properties: 
+      ParentId: !Ref UserId
+      PathPart: posts
+      RestApiId: !Ref ExampleAPI
+
+  Authorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties: 
+      AuthorizerResultTtlInSeconds: 0
+      AuthorizerUri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AuthorizerLambdaArn}/invocations"
+      Name: Authorizer
+      RestApiId: !Ref ExampleAPI
+      Type: TOKEN
+      IdentitySource: method.request.header.authorizationToken
+  
+  RegisterMethod:
+    Type: AWS::ApiGateway::Method
+    Properties: 
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration: 
+        IntegrationHttpMethod: POST
+        PassthroughBehavior: WHEN_NO_MATCH
+        TimeoutInMillis: 29000
+        Type: AWS_PROXY
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RegisterLambdaArn}/invocations"
+      ResourceId: !Ref Register
+      RestApiId: !Ref ExampleAPI
+  
+  LoginMethod:
+    Type: AWS::ApiGateway::Method
+    Properties: 
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration: 
+        IntegrationHttpMethod: POST
+        PassthroughBehavior: WHEN_NO_MATCH
+        TimeoutInMillis: 29000
+        Type: AWS_PROXY
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LoginLambdaArn}/invocations"
+      ResourceId: !Ref Login
+      RestApiId: !Ref ExampleAPI
+  
+  GetPostsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties: 
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration: 
+        IntegrationHttpMethod: POST
+        PassthroughBehavior: WHEN_NO_MATCH
+        TimeoutInMillis: 29000
+        Type: AWS_PROXY
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetPostsLambdaArn}/invocations"
+      ResourceId: !Ref Posts
+      RestApiId: !Ref ExampleAPI
+  
+  CreatePostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties: 
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref Authorizer
+      HttpMethod: POST
+      Integration: 
+        IntegrationHttpMethod: POST
+        PassthroughBehavior: WHEN_NO_MATCH
+        TimeoutInMillis: 29000
+        Type: AWS_PROXY
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CreatePostLambdaArn}/invocations"
+      ResourceId: !Ref Posts
+      RestApiId: !Ref ExampleAPI
+
+  RegisterLambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref RegisterLambdaName
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ExampleAPI}/*"
+  
+  LoginLambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LoginLambdaName
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ExampleAPI}/*"
+  
+  GetPostsLambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetPostsLambdaName
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ExampleAPI}/*"
+  
+  CreatePostLambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CreatePostLambdaName
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ExampleAPI}/*"
+  
+  AuthorizerLambdaFunctionInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref AuthorizerLambdaName
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ExampleAPI}/*"
+
+  ExampleAPIDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - RegisterMethod
+      - LoginMethod
+      - GetPostsMethod
+      - CreatePostMethod
+    Properties: 
+      RestApiId: !Ref ExampleAPI
+
+  ExampleAPIStage:
+    Type: AWS::ApiGateway::Stage
+    Properties: 
+      DeploymentId: !Ref ExampleAPIDeployment
+      RestApiId: !Ref ExampleAPI
+      StageName: latest
+
+Outputs:
+  ExampleAPIBaseURL:
+    Value: !Sub "https://${ExampleAPI}.execute-api.${AWS::Region}.amazonaws.com/latest"

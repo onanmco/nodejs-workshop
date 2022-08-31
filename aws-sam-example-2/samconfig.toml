@@ -1,0 +1,12 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "example-app"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-13f8z4jqjlq00"
+s3_prefix = "example-app"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM CAPABILITY_AUTO_EXPAND"
+disable_rollback = true
+image_repositories = []
